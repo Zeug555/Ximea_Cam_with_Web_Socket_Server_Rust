@@ -1,4 +1,3 @@
-//! A simple echo server.
 //!
 //! You can test this out by running:
 //!
@@ -60,18 +59,18 @@ async fn accept_connection(stream: TcpStream) {
 
     let (buffer, mut compressor) = cam_setup();
 
-    // Spawn a task to continuously send image data when requested
-    tokio::spawn(async move {
-        loop {
-            let image_data = get_cam_picture(&buffer, &mut compressor);
-            if let Err(_) = write.send(tokio_tungstenite::tungstenite::Message::Text(image_data.clone())).await {
-                break; // If sending fails, stop the loop
+    // Receive and discard messages from the WebSocket client
+    while let Some(read_content) = read.try_next().await.unwrap() {
+        if let Ok(text) = read_content.to_text() {
+            let trimmed_text = text.trim(); // Trim whitespace
+            if trimmed_text  == "one" {
+                println!("yo");
+                let image_data = get_cam_picture(&buffer, &mut compressor);
+                let _ = write.send(tokio_tungstenite::tungstenite::Message::Text(image_data)).await;
             }
         }
-    });
+    }
 
-    // Receive and discard messages from the WebSocket client
-    while let Some(_) = read.try_next().await.unwrap_or(None) {}
 }
 
 fn cam_setup() -> (AcquisitionBuffer, Compressor){
